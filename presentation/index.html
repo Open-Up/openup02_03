@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>Open Up</title>
+
+		<meta name="description" content="Open Up : Lesson 2 DNS servers">
+		<meta name="author" content="Tellier Benoit">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/black.css" id="theme">
+
+		<!-- Code syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+
+	
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+
+
+
+<section>
+<img data-src="img/large.png"><br/>
+<img data-src="img/openup.png">
+
+<h2>LDAP servers</h2>
+
+<p>Speaker : <a>Benoit Tellier</a></p>
+
+<p><small>
+Retrieve this presentation online : <a href="https://rawgit.com/chibenwa/openup02_03/master/presentation/index.html">https://rawgit.com/chibenwa/openup02_03/master/presentation/index.html</a><br/>
+And on <a href="https://github.com/chibenwa/openup02_03/">GitHub</a></small>
+</p>
+</section>
+
+<!--------------------------------------------------
+----------------------------------------------------
+================================================----
+NEW SECTION NEW SECTION NEW SECTION NEW SECTION=----
+================================================----
+----------------------------------------------------
+---------------------------------------------------->
+
+<section>
+<h2>Objectives</h2>
+<ul>
+  <li class="fragment">Know about LDAP</li>
+  <li class="fragment">Configure a LDAP server</li>
+  <li class="fragment">Use a LDAP client</li>
+  <li class="fragment">Use a LDAP server for PAM authentication</li>
+  <li class="fragment">Use a LDAP server for Web authentication</li>
+</ul>
+</section>
+
+<!--------------------------------------------------
+----------------------------------------------------
+================================================----
+NEW SECTION NEW SECTION NEW SECTION NEW SECTION=----
+================================================----
+----------------------------------------------------
+---------------------------------------------------->
+
+<section>
+  <section>
+    <h1>LDAP servers</h1>
+  </section>
+
+  <section>
+    <h2>What is LDAP ?</h2>
+<ul>
+  <li class="fragment">Lightweight Directory Access Protocol</li>
+  <li class="fragment">Used to access X.500 directories</li>
+  <li class="fragment">X.500 is associated with X.400 messaging</li>
+  <li class="fragment">X.500 was queried with DAP other ISO protocols</li>
+  <li class="fragment">X.500 queried with LDAP is called a LDAP directory</li>
+  <li class="fragment">LDAP is a meta directory</li>
+  <li class="fragment">Port 389</li>
+</ul>
+<p class="fragment">
+  <a href="http://en.wikipedia.org/wiki/Lightweight_Directory_Access_Protocol">About LDAP</a><br/>
+  <a href="http://en.wikipedia.org/wiki/X.500">About X.500</a><br/>
+  <a href="http://en.wikipedia.org/wiki/Directory_Access_Protocol">About DAP</a>
+</p>
+  </section>
+
+  <section>
+    <h2>Why bother with LDAP ?</h2>
+<ul>
+  <li class="fragment">SGBDR is overkill for this</li>
+  <li class="fragment">Extended capabilities (see ACL section)</li>
+  <li class="fragment">Normalized != SQL and its extensions and SGBDR transport mechanisms</li>
+  <li class="fragment">Easy to replicate</li>
+</ul>
+  </section>
+
+  <section>
+    <h2>LDAP data model...</h2>
+<ul>
+  <li class="fragment">Contains entries</li>
+  <li class="fragment">Entries are composed of attributes</li>
+  <li class="fragment">If the directory represents persons...</li>
+</ul>
+  </section>
+
+  <section>
+    <h2>Distinguished Name (DN)</h2>
+<ul>
+  <li class="fragment">Identifies an entry</li>
+  <li class="fragment">dn attribute</li>
+</ul>
+  </section>
+  <section>
+    <h2>LDIF format</h2>
+<ul>
+  <li class="fragment">LDAP Data Interchange Format</li>
+  <li class="fragment">in UTF-8</li>
+  <li class="fragment"># comments</li>
+  <li class="fragment">Entries separated by blank lines...</li>
+  <li class="fragment">... containing dn attribute</li>
+  <li class="fragment">One line per attribute : name: value</li>
+  <li class="fragment">value : might use base64</li>
+  <li class="fragment">names : not case sensitive</li>
+</ul>
+  </section>
+  <section>
+<h2>Example of LDIF file</h2>
+<pre><code>dn: dc=example,dc=com
+objectclass: dcObject
+objectclass: organization
+o: Example
+postalAddress: 33, avenue Dennis-Ritchie
+
+dn: ou=DSI,dc=example,dc=com
+objectclass: organizationalUnit
+ou: DSI
+
+dn: cn=Prénom Nom,ou=DSI,dc=example,dc=com
+objectclass: inetOrgPerson
+cn: Prénom Nom
+sn: Nom
+uid: prenomnom
+mail: prenom.nom@example.com
+</pre></code>
+  </section>
+  <section>
+    <h2>OpenLDAP</h2>
+    <img data-src="img/open_ldap.png">
+    <ul>
+  <li class="fragment">LDAP server</li>
+  <li class="fragment">Libraries</li>
+  <li class="fragment">Tools</li>
+  <li class="fragment">Kurt Zeilenga in 1998</li>
+    </ul>
+    <pre class="fragment">
+      <code>apt-get install slapd</code>
+    </pre>
+  </section>
+  <section>
+    <h2>SLAPD configuration</h2>
+    <ul>
+  <li class="fragment">/etc/ldap/slapd.conf</li>
+  <li class="fragment">/etc/ldap/slapd.d/*</li>
+  <li class="fragment">/var/lib/ldap</li>
+  <li class="fragment">/usr/share/slapd/slapd.conf</li>
+    </ul>
+  </section>
+  <section>
+    <h2>SLAPD configuration ...</h2>
+    <ul>
+  <li class="fragment"> # comment</li>
+  <li class="fragment">~ following of previous line</li>
+  <li class="fragment">Empty line ignored</li>
+  <li class="fragment">global/storage formats/database directives</li>
+    </ul>
+  </section>
+  <section>
+    <h2>Global directives</h2>
+<pre><code>include /etc/ldap/schema/core.schema
+loglevel stats
+modulepath /usr/lib/ldap
+moduleload back_bdb</code></pre>
+  </section>
+  <section>
+    <h2>Storage formats directives</h2>
+<pre><code>backend bdb</code></pre>
+  </section>
+  <section>
+    <h2>data directives</h2>
+<pre><code>database bdb
+suffix "dc=example,dc=com"
+rootdn "cn=admin,dc=example,dc=com"</code></pre>
+  </section>
+  <section>
+    <h2>ACL</h2>
+    <ul>
+  <li class="fragment">Full access by default</li>
+  <li class="fragment">Not a good idea</li>
+  <li class="fragment"> => ACL</li>
+    </ul>
+  </section>
+  <section>
+    <h2>ACL example</h2>
+<pre><code>access to *
+    by anonymous auth
+    by * read</code></pre>
+  </section>
+  <section>
+    <h2>ACL example</h2>
+<pre><code>access to attr=userPassword
+    by self =xw
+    by anonymous auth
+    by * none
+
+access to *
+    by self write
+    by users read
+    by * none</code></pre>
+  </section>
+  <section>
+    <h2>ACL : people specification</h2>
+    <ul>
+  <li class="fragment">*  => every body</li>
+  <li class="fragment">anonymous => anonymous users</li>
+  <li class="fragment">users => authenticated users</li>
+  <li class="fragment">self => associated user</li>
+  <li class="fragment">dn[.{regex|exact}]=expr => expression</li>
+  <li class="fragment">dn.{base|one|subtree|children}=DN => a DN</li>
+    </ul>
+  </section>
+  <section>
+    <h2>ACL : what ?</h2>
+    <ul>
+  <li class="fragment">*  => every thing</li>
+  <li class="fragment">dn[.{regex|exact}]=expr</li>
+  <li class="fragment">dn.{base|one|subtree|children}=<DN></li>
+  <li class="fragment">filter=...</li>
+  <li class="fragment">attrs=...</li>
+    </ul>
+  </section>
+<section>
+    <h2>ACL : rights ?</h2>
+    <img data-src="img/rights.png">
+  </section>
+  <section>
+    <h2>Managing entries</h2>
+<pre class="fragment"><code>slapadd -b ’dc=example,dc=com’ -l fichier.ldif</code></pre>
+<p class="fragment">slapd should not be running</p>
+<pre class="fragment"><code>slapcat -b ’dc=example,dc=com’ -l fichier.ldif</code></pre>
+<pre class="fragment"><code>slapindex -b ’dc=example,dc=com’</code></pre>
+<p class="fragment">slapd should not be running</p>
+  </section>
+</section>
+
+<!--------------------------------------------------
+----------------------------------------------------
+================================================----
+NEW SECTION NEW SECTION NEW SECTION NEW SECTION=----
+================================================----
+----------------------------------------------------
+---------------------------------------------------->
+
+<section>
+  <section>
+    <h1>LDAP servers</h1>
+  </section>
+  <section>
+    <h2>Installing command line clients</h2>
+<pre><code>apt-get install ldap-utils</code></pre>
+  </section>
+  <section>
+    <h2>Searching a LDAP</h2>
+<pre class="fragment"><code>ldapsearch -x -b ’dc=example,dc=com’</code></pre>
+<pre class="fragment"><code>ldapsearch -W -b ’dc=example,dc=com’ -D ’cn=admin,dc=example,dc=com’</code></pre>
+<div class="fragment"><p>And with filters ... (RFC-4515)</p>
+<pre><code>(cn=Babs Jensen)
+(!(cn=Tim Howes))
+(&(objectClass=Person)(|(sn=Jensen)(cn=Babs J*)))
+(o=univ*of*mich*)
+(seeAlso=)</code></pre></div>
+  </section>
+  <section>
+    <h2>Adding entries to a LDAP</h2>
+<pre class="fragment"><code>ldapadd -W -D ’cn=admin,dc=example,dc=com’ \
+-f fichier.ldif</code></pre>
+<pre class="fragment"><code>ldapdelete -W -D ’cn=admin,dc=example,dc=com’ \
+’cn=[...],dc=example,dc=com’</code></pre>
+  </section>
+  <section>
+    <h2>Modifying a password</h2>
+<pre class="fragment"><code>ldappasswd -W -A -S -D ’cn=[...],dc=example,dc=com’</code></pre>
+<pre class="fragment"><code>ldappasswd -W -S -D ’cn=admin,dc=example,dc=com’ \
+’cn=[...],dc=example,dc=com’</code></pre>
+  </section>
+</section>
+
+
+<!--------------------------------------------------
+----------------------------------------------------
+================================================----
+NEW SECTION NEW SECTION NEW SECTION NEW SECTION=----
+================================================----
+----------------------------------------------------
+---------------------------------------------------->
+
+
+<section>
+  <section>
+    <h1>PAM authentication</h1>
+  </section>
+  <section>
+    <h2>Why PAM ?</h2>
+    <ul>
+  <li class="fragment">Go beyond /etc/passwd</li>
+  <li class="fragment">Works with extensions</li>
+  <li class="fragment">Contributed by SUN</li>
+  <li class="fragment">/etc/pam.conf vs /etc/pam.d</li>
+  <li class="fragment">Rules formats : type control module-path module-arguments</li>
+    </ul>
+  </section>
+  <section>
+    <h2>type</h2>
+    <ul>
+  <li class="fragment">account</li>
+  <li class="fragment">auth</li>
+  <li class="fragment">password</li>
+  <li class="fragment">session</li>
+    </ul>
+  </section>
+  <section>
+    <h2>control</h2>
+    <ul>
+  <li class="fragment">required</li>
+  <li class="fragment">requisite</li>
+  <li class="fragment">sufficient</li>
+  <li class="fragment">optional</li>
+  <li class="fragment">Rules formats : type control module-path module-arguments</li>
+    </ul>
+  </section>
+  <section>
+    <h2>module-path and module-arguments</h2>
+    <ul>
+  <li class="fragment">Path to modules</li>
+  <li class="fragment">pam_cracklib</li>
+  <li class="fragment">pam_deny</li>
+  <li class="fragment">pam_limits</li>
+  <li class="fragment">pam_listfile</li>
+  <li class="fragment">pam_unix</li>
+    </ul>
+  </section>
+  <section>
+    <h2>PAM example</h2>
+<pre class="fragment"><code>auth      required  pam_unix.so     try_first_pass nullok
+auth      optional  pam_permit.so
+auth      required  pam_env.so
+
+account   required  pam_unix.so
+account   optional  pam_permit.so
+account   required  pam_time.so
+
+password  required  pam_unix.so     try_first_pass nullok sha512 shadow
+password  optional  pam_permit.so
+
+session   required  pam_limits.so
+session   required  pam_unix.so
+session   optional  pam_permit.so</code></pre>
+  </section>
+  <section>
+    <h2>NSSwitch</h2>
+    <ul>
+  <li class="fragment">Access order to different data sources</li>
+  <li class="fragment">/etc/nsswitch.conf</li>
+  <li class="fragment">passwd, group and shadow</li>
+  <li class="fragment">hosts: files dns</li>
+    </ul>
+  </section>
+  <section>
+    <h2>NSSwitch example</h2>
+<pre class="fragment"><code>passwd: files
+group: files
+shadow: files
+
+publickey: files
+
+hosts: files dns myhostname
+networks: files
+
+protocols: files
+services: files
+ethers: files
+rpc: files
+
+netgroup: files</code></pre>
+  </section>
+</section>
+
+
+
+<!--------------------------------------------------
+----------------------------------------------------
+================================================----
+NEW SECTION NEW SECTION NEW SECTION NEW SECTION=----
+================================================----
+----------------------------------------------------
+---------------------------------------------------->
+
+
+<section>
+	<h1>Questions ?</h1>
+</section>
+
+
+
+
+
+
+
+
+			</div>
+
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+
+			// Full list of configuration options available at:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				slideNumber: true,
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+                                
+
+				transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+				// Optional reveal.js plugins
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/highlight/highlight.js', async: true, condition: function() { return !!document.querySelector( 'pre code' ); }, callback: function() { hljs.initHighlightingOnLoad(); } },
+					{ src: 'plugin/zoom-js/zoom.js', async: true },
+					{ src: 'plugin/notes/notes.js', async: true }
+				]
+			});
+
+		</script>
+
+	</body>
+</html>
